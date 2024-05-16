@@ -74,7 +74,9 @@ Property Let vaWords(x As Dictionary)
 End Property
 
 Private Sub anotherPrivateSub()
-    anotherPublicFunction
+    
+    Call anotherPublicFunction
+    
     Dim y As Integer
     y = 4
     Do Until y = 0
@@ -111,7 +113,7 @@ Public Function anotherPublicFunction() As String
     ' Lets do a for loop
     Dim myCollection As Collection
     Dim x
-    For Each x In myCollection
+    For Each x In myCollection ' TODO: Error: no items in Collection at this point
         Debug.Print x
         Dim thisMethod, doesnt, matter, dont, thiscode
         x.doesNotHave thisMethod

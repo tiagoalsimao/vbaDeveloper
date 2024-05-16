@@ -37,8 +37,8 @@ Private Sub CustomActions_beforeClose()
 End Sub
 
 Function IsWorkBookOpen(wkbName As String) As Boolean
-    Dim wBook As Workbook
     On Error Resume Next
+    Dim wBook As Workbook
     Set wBook = Workbooks(wkbName)
     IsWorkBookOpen = Not (wBook Is Nothing)
     On Error GoTo 0

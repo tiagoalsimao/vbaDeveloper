@@ -1,11 +1,15 @@
 Attribute VB_Name = "XMLexporter"
+'Option Explicit
+
 Public Const XML_FOLDER_NAME = "XMLsource\"
 Public Const TEMP_ZIP_NAME = "temp.zip"
+
 
 Sub test_unpackXML()
     Call unpackXML("tempDevFile.xlsm")
     MsgBox ("Done")
 End Sub
+
 
 Public Sub unpackXML(fileShortName As String)
     'This unpacks the most recently saved version of the file that is passed as an argument.
