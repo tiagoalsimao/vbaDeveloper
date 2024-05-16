@@ -6,7 +6,7 @@ Attribute VB_Name = "Build"
 ' 2. From tools references... add
 '     * Microsoft Visual Basic for Applications Extensibility 5.3
 '     * Microsoft Scripting Runtime
-' 3. Rename the project to 'vbaDeveloper' (in Project Explorer (Ctrl+R to show) select current project and click F4 
+' 3. Rename the project to 'vbaDeveloper' (in Project Explorer (Ctrl+R to show) select current project and click F4
 '    to open Properties window. Then set property '(Name)' to 'vbaDeveloper')
 ' 4. Enable programatic access to VBA:
 '       File -> Options -> Trust Center, Trust Center Settings, -> Macros,
@@ -15,10 +15,10 @@ Attribute VB_Name = "Build"
 '           [HKEY_CURRENT_USER\Software\Policies\Microsoft\office\{Excel-Version}\excel\security]
 '           "accessvbom"=dword:00000001
 '       If you get 'path not found' exception in Excel 2013, include the following step:
-'           In 'Trust Center' settings, go to 'File Block Settings' and un-check 'open' and/or 'save' 
+'           In 'Trust Center' settings, go to 'File Block Settings' and un-check 'open' and/or 'save'
 '           for 'Excel 2007 and later Macro-Enabled Workbooks and Templates'.
 ' 5. If using a non-English version of Excel, rename your current workbook into ThisWorkbook (in VB Editor, press Ctrl+R,
-'    then in the Project Explorer (under the local folder name for Microsoft Excel Objects) select the workbook. Set the 
+'    then in the Project Explorer (under the local folder name for Microsoft Excel Objects) select the workbook. Set the
 '    property (F4 to show Properties window) '(Name)' to ThisWorkbook).
 ' 6. In VB Editor, press F4, then under Microsoft Excel Objects, select ThisWorkbook in vbaDeveloper. Set the property 'IsAddin' to TRUE
 ' 7. In VB Editor, menu File-->Save Book1; Save as vbaDeveloper.xlam in the same directory as 'src' and the 'README.md' file
@@ -33,6 +33,12 @@ Attribute VB_Name = "Build"
 ' 13.Open the Excel workbook where you want to use vbaDeveloper and add vbaDeveloper.xlam as reference to load the Add-In with the workbook:
 '       In VB Editor -> Tools -> References -> Browse and select vbaDeveloper.xlam
 '       Save the workbook, close it and reopen the workbook, now in the menu ribbon the ADD-INS tab is available with the VbaDeveloper menu
+
+' Source: https://github.com/hilkoc/vbaDeveloper
+
+' Modifications: Tiago Simao
+' Date: 2024-05-16
+
 '''
 
 Option Explicit
@@ -44,6 +50,7 @@ Private Const IMPORT_DELAY As String = "00:00:03"
 Public componentsToImport As Dictionary 'Key = componentName, Value = componentFilePath
 Public sheetsToImport As Dictionary 'Key = componentName, Value = File object
 Public vbaProjectToImport As VBProject
+
 
 Public Sub testImport()
     Dim proj_name As String
@@ -76,6 +83,7 @@ End Sub
 ' if the workbook is new and has never been saved,
 ' vbProject.fileName will throw an error while wb.FullName will return a name without slashes.
 Public Function getSourceDir(fullWorkbookPath As String, createIfNotExists As Boolean) As String
+
     ' First check if the fullWorkbookPath contains a \.
     If Not InStr(fullWorkbookPath, "\") > 0 Then
         'In this case it is a new workbook, we skip it
@@ -111,11 +119,14 @@ End Function
 
 ' Usually called after the given workbook is saved
 Public Sub exportVbaCode(vbaProject As VBProject)
+
     Dim vbProjectFileName As String
+    
     On Error Resume Next
-    'this can throw if the workbook has never been saved.
-    vbProjectFileName = vbaProject.fileName
+        'this can throw if the workbook has never been saved.
+        vbProjectFileName = vbaProject.fileName
     On Error GoTo 0
+    
     If vbProjectFileName = "" Then
         'In this case it is a new workbook, we skip it
         Debug.Print "No file name for project " & vbaProject.name & ", skipping"
@@ -169,27 +180,34 @@ End Sub
 
 'To export sheets
 Private Sub exportLines(exportPath As String, component As VBComponent)
+
     Dim extension As String: extension = ".sheet.cls"
+    
     Dim fileName As String
     fileName = exportPath & "\" & component.name & extension
+    
     Debug.Print "exporting " & component.name & extension
     'component.Export exportPath & "\" & component.name & extension
+    
     Dim FSO As New Scripting.FileSystemObject
     Dim outStream As TextStream
     Set outStream = FSO.CreateTextFile(fileName, True, False)
     outStream.Write (component.codeModule.lines(1, component.codeModule.CountOfLines))
     outStream.Close
+
 End Sub
 
 
 ' Usually called after the given workbook is opened. The option includeClassFiles is False by default because
 ' they don't import correctly from VBA. They'll have to be imported manually instead.
 Public Sub importVbaCode(vbaProject As VBProject, Optional includeClassFiles As Boolean = False)
+
     Dim vbProjectFileName As String
     On Error Resume Next
-    'this can throw if the workbook has never been saved.
-    vbProjectFileName = vbaProject.fileName
+        'this can throw if the workbook has never been saved.
+        vbProjectFileName = vbaProject.fileName
     On Error GoTo 0
+    
     If vbProjectFileName = "" Then
         'In this case it is a new workbook, we skip it
         Debug.Print "No file name for project " & vbaProject.name & ", skipping"
@@ -212,30 +230,38 @@ Public Sub importVbaCode(vbaProject As VBProject, Optional includeClassFiles As 
     Dim FSO As New Scripting.FileSystemObject
     Dim projContents As Folder
     Set projContents = FSO.GetFolder(export_path)
+    
     Dim file As Object
     For Each file In projContents.Files()
         'check if and how to import the file
         checkHowToImport file, includeClassFiles
     Next
 
-    Dim componentName As String
+    ' Remove all the modules and class modules
     Dim vComponentName As Variant
-    'Remove all the modules and class modules
     For Each vComponentName In componentsToImport.Keys
+    
+        Dim componentName As String
         componentName = vComponentName
         removeComponent vbaProject, componentName
+        
     Next
+    
     'Then import them
     Debug.Print "Invoking 'Build.importComponents'with Application.Ontime with delay " & IMPORT_DELAY
+    
     ' to prevent duplicate modules, like MyClass1 etc.
     Application.OnTime Now() + TimeValue(IMPORT_DELAY), "'Build.importComponents'"
     Debug.Print "almost finished importing code for " & vbaProject.name
+    
 End Sub
 
 
 Private Sub checkHowToImport(file As Object, includeClassFiles As Boolean)
+
     Dim fileName As String
     fileName = file.name
+    
     Dim componentName As String
     componentName = Left(fileName, InStr(fileName, ".") - 1)
     If componentName = "Build" Then
@@ -246,6 +272,7 @@ Private Sub checkHowToImport(file As Object, includeClassFiles As Boolean)
     If Len(fileName) > 4 Then
         Dim lastPart As String
         lastPart = Right(fileName, 4)
+        
         Select Case lastPart
             Case ".cls" ' 10 == Len(".sheet.cls")
                 If Len(fileName) > 10 And Right(fileName, 10) = ".sheet.cls" Then
@@ -273,22 +300,24 @@ End Sub
 ' Only removes the vba component if it exists
 Private Sub removeComponent(vbaProject As VBProject, componentName As String)
     If componentExists(vbaProject, componentName) Then
-        Dim c As VBComponent
-        Set c = vbaProject.VBComponents(componentName)
-        Debug.Print "removing " & c.name
-        vbaProject.VBComponents.Remove c
+        Dim component As VBComponent
+        Set component = vbaProject.VBComponents(componentName)
+        Debug.Print "removing " & component.name
+        vbaProject.VBComponents.Remove component
     End If
 End Sub
 
 
 Public Sub importComponents()
+
     If componentsToImport Is Nothing Then
         Debug.Print "Failed to import! Dictionary 'componentsToImport' was not initialized."
         Exit Sub
     End If
-    Dim componentName As String
+    
     Dim vComponentName As Variant
     For Each vComponentName In componentsToImport.Keys
+        Dim componentName As String
         componentName = vComponentName
         importComponent vbaProjectToImport, componentsToImport(componentName)
     Next
@@ -303,6 +332,7 @@ Public Sub importComponents()
     'We're done, clear globals explicitly to free memory.
     Set componentsToImport = Nothing
     Set vbaProjectToImport = Nothing
+    
 End Sub
 
 
@@ -315,35 +345,43 @@ End Sub
 
 
 Private Sub importLines(vbaProject As VBProject, file As Object)
+
     Dim componentName As String
     componentName = Left(file.name, InStr(file.name, ".") - 1)
-    Dim c As VBComponent
-    If Not componentExists(vbaProject, componentName) Then
-        ' Create a sheet to import this code into. We cannot set the ws.codeName property which is read-only,
-        ' instead we set its vbComponent.name which leads to the same result.
-        Dim addedSheetCodeName As String
-        addedSheetCodeName = addSheetToWorkbook(componentName, vbaProject.fileName)
-        Set c = vbaProject.VBComponents(addedSheetCodeName)
-        c.name = componentName
-    End If
-    Set c = vbaProject.VBComponents(componentName)
-    Debug.Print "Importing lines from " & componentName & " into component " & c.name
+    
+    Dim component As VBComponent
+    
+    ' TODO: removed code: if statement is doing nothing. component is replaced after
+'    If Not componentExists(vbaProject, componentName) Then
+'        ' Create a sheet to import this code into. We cannot set the ws.codeName property which is read-only,
+'        ' instead we set its vbComponent.name which leads to the same result.
+'        Dim addedSheetCodeName As String
+'        addedSheetCodeName = addSheetToWorkbook(componentName, vbaProject.fileName)
+'        Set component = vbaProject.VBComponents(addedSheetCodeName)
+'        component.name = componentName
+'    End If
+    
+    Set component = vbaProject.VBComponents(componentName)
+    Debug.Print "Importing lines from " & componentName & " into component " & component.name
 
     ' At this point compilation errors may cause a crash, so we ignore those.
     On Error Resume Next
-    c.codeModule.DeleteLines 1, c.codeModule.CountOfLines
-    c.codeModule.AddFromFile file.Path
+        component.codeModule.DeleteLines 1, component.codeModule.CountOfLines
+        component.codeModule.AddFromFile file.Path
     On Error GoTo 0
+    
 End Sub
 
 
 Public Function componentExists(ByRef proj As VBProject, name As String) As Boolean
-    On Error GoTo doesnt
-    Dim c As VBComponent
-    Set c = proj.VBComponents(name)
+
+    On Error GoTo componentDoesNotExist
+    Dim component As VBComponent
+    Set component = proj.VBComponents(name)
     componentExists = True
+    
     Exit Function
-doesnt:
+componentDoesNotExist:
     componentExists = False
 End Function
 
@@ -351,29 +389,38 @@ End Function
 ' Returns a reference to the workbook. Opens it if it is not already opened.
 ' Raises error if the file cannot be found.
 Public Function openWorkbook(ByVal filePath As String) As Workbook
+
     Dim wb As Workbook
+    
     Dim fileName As String
     fileName = Dir(filePath)
+    
     On Error Resume Next
-    Set wb = Workbooks(fileName)
+        Set wb = Workbooks(fileName)
     On Error GoTo 0
+    
     If wb Is Nothing Then
         Set wb = Workbooks.Open(filePath) 'can raise error
     End If
+    
     Set openWorkbook = wb
+    
 End Function
 
 
 ' Returns the CodeName of the added sheet or an empty String if the workbook could not be opened.
 Public Function addSheetToWorkbook(sheetName As String, workbookFilePath As String) As String
+
     Dim wb As Workbook
     On Error Resume Next 'can throw if given path does not exist
-    Set wb = openWorkbook(workbookFilePath)
+        Set wb = openWorkbook(workbookFilePath)
     On Error GoTo 0
+    
     If Not wb Is Nothing Then
         Dim ws As Worksheet
         Set ws = wb.Sheets.Add(After:=wb.Sheets(wb.Sheets.Count))
         ws.name = sheetName
+        
         'ws.CodeName = sheetName: cannot assign to read only property
         Debug.Print "Sheet added " & sheetName
         addSheetToWorkbook = ws.CodeName
@@ -381,5 +428,5 @@ Public Function addSheetToWorkbook(sheetName As String, workbookFilePath As Stri
         Debug.Print "Skipping file " & sheetName & ". Could not open workbook " & workbookFilePath
         addSheetToWorkbook = ""
     End If
+    
 End Function
-
