@@ -173,7 +173,7 @@ End Function
 
 'To export everything else but sheets
 Private Sub exportComponent(exportPath As String, component As VBComponent, Optional extension As String = ".cls")
-    Debug.Print "exporting " & component.name & extension
+    'Debug.Print "exporting " & component.name & extension
     component.Export exportPath & "\" & component.name & extension
 End Sub
 
@@ -185,8 +185,7 @@ Private Sub exportLines(exportPath As String, component As VBComponent)
     
     Dim fileName As String
     fileName = exportPath & "\" & component.name & extension
-    
-    Debug.Print "exporting " & component.name & extension
+    'Debug.Print "exporting " & component.name & extension
     'component.Export exportPath & "\" & component.name & extension
     
     Dim FSO As New Scripting.FileSystemObject
