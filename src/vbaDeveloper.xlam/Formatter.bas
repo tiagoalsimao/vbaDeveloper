@@ -310,7 +310,13 @@ Private Function isEqual(first As String, second As String) As Boolean
 End Function
 
 ' Returns True if strToCheck begins with begin, ignoring case
-Private Function lineStartsWith(begin As String, strToCheck As String) As Boolean
+Private Function lineStartsWith(ByVal begin As String, ByVal strToCheck As String) As Boolean
+    
+    ' Add Space on the right to check exact word.
+    ' This avoids cases where variable or procedure start with Keywords, E.g. NextLevel
+    AddSpaceOnTheRight begin
+    AddSpaceOnTheRight strToCheck
+    
     lineStartsWith = False
     Dim beginLength As Integer
     beginLength = Len(begin)
@@ -319,7 +325,11 @@ Private Function lineStartsWith(begin As String, strToCheck As String) As Boolea
     End If
 End Function
 
-
+Private Sub AddSpaceOnTheRight(ByRef Text As String)
+    If Right(Text, 1) <> " " Then
+        Text = Text & " "
+    End If
+End Sub
 ' Returns True if strToCheck ends with ending, ignoring case
 Private Function lineEndsWith(ending As String, strToCheck As String) As Boolean
     lineEndsWith = False
