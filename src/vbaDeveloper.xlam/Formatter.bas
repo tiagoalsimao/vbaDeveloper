@@ -150,6 +150,22 @@ Private Sub initializeWords()
     Set words = w
 End Sub
 
+Private Function CreateMiddleWords() As Dictionary
+    
+    Dim MiddleWords As Dictionary
+    Set MiddleWords = New Dictionary
+    
+    With MiddleWords
+        .Add PRECOMP_BEG_END_ELSE, Empty
+        .Add PRECOMP_BEG_END_ELSEIF, Empty
+        
+        .Add BEG_END_ELSE, Empty
+        .Add BEG_END_ELSEIF, Empty
+        .Add BEG_END_CASE, Empty
+    End With
+    
+    Set CreateMiddleWords = MiddleWords
+End Function
 
 Private Property Get vbaWords() As Dictionary
     If words Is Nothing Then
