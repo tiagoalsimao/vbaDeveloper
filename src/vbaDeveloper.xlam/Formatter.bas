@@ -211,29 +211,30 @@ Public Sub formatCode(codePane As codeModule)
         Dim line As String
         line = Trim(codePane.lines(lineNr, 1))
         
-        Dim LineWithoutComments As String
-        LineWithoutComments = TrimComments(line)
-        
         Dim IsCurrentLineContinuated As Boolean
         IsCurrentLineContinuated = IsLineContinuated(line)
         
+        Dim LineWithoutComments As String
+        LineWithoutComments = TrimComments(line)
+        
         If line = "" Then
             levelChange = 0
-        ElseIf isEqual(ONEWORD_ELSE, line) _
-            Or lineStartsWith(BEG_END_ELSEIF, line) _
-            Or lineStartsWith(BEG_END_CASE, line) Then
+        ElseIf isEqual(ONEWORD_ELSE, LineWithoutComments) _
+                    Or lineStartsWith(BEG_END_ELSEIF, LineWithoutComments) _
+                    Or lineStartsWith(BEG_END_CASE, LineWithoutComments) Then
+                    
             ' Case, Else, ElseIf need to jump to the left
             levelChange = 1
             indentLevel = -1 + indentLevel
-        ElseIf isLabel(line) Then
+        ElseIf isLabel(LineWithoutComments) Then
             ' Labels don't have indentation
             levelChange = indentLevel
             indentLevel = 0
             ' check for oneline If statemts
-        ElseIf isOneLineIfStatemt(line) Then
+        ElseIf isOneLineIfStatemt(LineWithoutComments) Then
             levelChange = 0
         Else
-            levelChange = indentChange(line)
+            levelChange = indentChange(LineWithoutComments)
         End If
         
         If IsCurrentLineContinuated And Not isPrevLineContinuated Then
