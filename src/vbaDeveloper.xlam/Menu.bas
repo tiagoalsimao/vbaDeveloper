@@ -50,7 +50,7 @@ Public Sub createMenu()
 
         addMenuItem exSubMenu, exCommand, caption
         addMenuItem imSubMenu, imCommand, caption
-        'addMenuItem formatSubMenu, formatCommand, caption
+        addMenuItem formatSubMenu, formatCommand, caption
 
 nextProject:
         On Error GoTo 0 'reset the error handling
