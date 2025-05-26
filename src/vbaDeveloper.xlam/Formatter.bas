@@ -1,68 +1,70 @@
 Attribute VB_Name = "Formatter"
 Option Explicit
 
-Private Const BEG_SUB = "Sub "
-Private Const END_SUB = "End Sub"
-Private Const BEG_PB_SUB = "Public Sub "
-Private Const BEG_PV_SUB = "Private Sub "
-Private Const BEG_FR_SUB = "Friend Sub "
-Private Const BEG_PB_ST_SUB = "Public Static Sub "
-Private Const BEG_PV_ST_SUB = "Private Static Sub "
-Private Const BEG_FR_ST_SUB = "Friend Static Sub "
+Private Const PRECOMP_BEG_IF As String = "#If"
+Private Const PRECOMP_BEG_END_ELSE As String = "#Else"
+Private Const PRECOMP_BEG_END_ELSEIF As String = "#ElseIf"
+Private Const PRECOMP_END_IF As String = "#End If"
 
-Private Const BEG_FUN = "Function "
-Private Const END_FUN = "End Function"
-Private Const BEG_PB_FUN = "Public Function "
-Private Const BEG_PV_FUN = "Private Function "
-Private Const BEG_FR_FUN = "Friend Function "
-Private Const BEG_PB_ST_FUN = "Public Static Function "
-Private Const BEG_PV_ST_FUN = "Private Static Function "
-Private Const BEG_FR_ST_FUN = "Friend Static Function "
+Private Const BEG_SUB As String = "Sub"
+Private Const END_SUB As String = "End Sub"
+Private Const BEG_PB_SUB As String = "Public Sub"
+Private Const BEG_PV_SUB As String = "Private Sub"
+Private Const BEG_FR_SUB As String = "Friend Sub"
+Private Const BEG_PB_ST_SUB As String = "Public Static Sub"
+Private Const BEG_PV_ST_SUB As String = "Private Static Sub"
+Private Const BEG_FR_ST_SUB As String = "Friend Static Sub"
 
-Private Const BEG_PROP = "Property "
-Private Const END_PROP = "End Property"
-Private Const BEG_PB_PROP = "Public Property "
-Private Const BEG_PV_PROP = "Private Property "
-Private Const BEG_FR_PROP = "Friend Property "
-Private Const BEG_PB_ST_PROP = "Public Static Property "
-Private Const BEG_PV_ST_PROP = "Private Static Property "
-Private Const BEG_FR_ST_PROP = "Friend Static Property "
+Private Const BEG_FUN As String = "Function"
+Private Const END_FUN As String = "End Function"
+Private Const BEG_PB_FUN As String = "Public Function"
+Private Const BEG_PV_FUN As String = "Private Function"
+Private Const BEG_FR_FUN As String = "Friend Function"
+Private Const BEG_PB_ST_FUN As String = "Public Static Function"
+Private Const BEG_PV_ST_FUN As String = "Private Static Function"
+Private Const BEG_FR_ST_FUN As String = "Friend Static Function"
 
-Private Const BEG_ENUM = "Enum "
-Private Const END_ENUM = "End Enum"
-Private Const BEG_PB_ENUM = "Public Enum "
-Private Const BEG_PV_ENUM = "Private Enum "
+Private Const BEG_PROP As String = "Property"
+Private Const END_PROP As String = "End Property"
+Private Const BEG_PB_PROP As String = "Public Property"
+Private Const BEG_PV_PROP As String = "Private Property"
+Private Const BEG_FR_PROP As String = "Friend Property"
+Private Const BEG_PB_ST_PROP As String = "Public Static Property"
+Private Const BEG_PV_ST_PROP As String = "Private Static Property"
+Private Const BEG_FR_ST_PROP As String = "Friend Static Property"
 
-Private Const BEG_IF = "If "
-Private Const END_IF = "End If"
-Private Const BEG_WITH = "With "
-Private Const END_WITH = "End With"
+Private Const BEG_ENUM As String = "Enum"
+Private Const END_ENUM As String = "End Enum"
+Private Const BEG_PB_ENUM As String = "Public Enum"
+Private Const BEG_PV_ENUM As String = "Private Enum"
 
-Private Const BEG_SELECT = "Select "
-Private Const END_SELECT = "End Select"
+Private Const BEG_IF As String = "If"
+Private Const END_IF As String = "End If"
+Private Const BEG_WITH As String = "With"
+Private Const END_WITH As String = "End With"
 
-Private Const BEG_FOR = "For "
-Private Const END_FOR = "Next "
-Private Const BEG_DOWHILE = "Do While "
-Private Const BEG_DOUNTIL = "Do Until "
-Private Const BEG_WHILE = "While "
-Private Const END_WHILE = "Wend"
+Private Const BEG_SELECT As String = "Select Case"
+Private Const END_SELECT As String = "End Select"
 
-Private Const BEG_TYPE = "Type "
-Private Const END_TYPE = "End Type"
-Private Const BEG_PB_TYPE = "Public Type "
-Private Const BEG_PV_TYPE = "Private Type "
+Private Const BEG_FOR As String = "For"
+Private Const END_FOR As String = "Next"
+Private Const BEG_WHILE As String = "While"
+Private Const END_WHILE As String = "Wend"
+Private Const BEG_DO As String = "Do"
+Private Const END_DO As String = "Loop"
+
+Private Const BEG_TYPE As String = "Type"
+Private Const END_TYPE As String = "End Type"
+Private Const BEG_PB_TYPE As String = "Public Type"
+Private Const BEG_PV_TYPE As String = "Private Type"
 
 ' Single words that need to be handled separately
-Private Const ONEWORD_END_FOR = "Next"
-Private Const ONEWORD_DO = "Do"
-Private Const ONEWORD_END_LOOP = "Loop"
-Private Const ONEWORD_ELSE = "Else"
-Private Const BEG_END_ELSEIF = "ElseIf"
-Private Const BEG_END_CASE = "Case "
+Private Const BEG_END_ELSE As String = "Else"
+Private Const BEG_END_ELSEIF As String = "ElseIf"
+Private Const BEG_END_CASE As String = "Case"
 
-Private Const THEN_KEYWORD = "Then"
-Private Const LINE_CONTINUATION = " _"
+Private Const THEN_KEYWORD As String = "Then"
+Private Const LINE_CONTINUATION As String = " _"
 
 Private Const INDENT = "    "
 
@@ -94,59 +96,65 @@ End Sub
 Private Sub initializeWords()
     Dim w As Dictionary
     Set w = New Dictionary
-
-    w.Add BEG_SUB, 1
-    w.Add END_SUB, -1
-    w.Add BEG_PB_SUB, 1
-    w.Add BEG_PV_SUB, 1
-    w.Add BEG_FR_SUB, 1
-    w.Add BEG_PB_ST_SUB, 1
-    w.Add BEG_PV_ST_SUB, 1
-    w.Add BEG_FR_ST_SUB, 1
-
-    w.Add BEG_FUN, 1
-    w.Add END_FUN, -1
-    w.Add BEG_PB_FUN, 1
-    w.Add BEG_PV_FUN, 1
-    w.Add BEG_FR_FUN, 1
-    w.Add BEG_PB_ST_FUN, 1
-    w.Add BEG_PV_ST_FUN, 1
-    w.Add BEG_FR_ST_FUN, 1
-
-    w.Add BEG_PROP, 1
-    w.Add END_PROP, -1
-    w.Add BEG_PB_PROP, 1
-    w.Add BEG_PV_PROP, 1
-    w.Add BEG_FR_PROP, 1
-    w.Add BEG_PB_ST_PROP, 1
-    w.Add BEG_PV_ST_PROP, 1
-    w.Add BEG_FR_ST_PROP, 1
-
-    w.Add BEG_ENUM, 1
-    w.Add END_ENUM, -1
-    w.Add BEG_PB_ENUM, 1
-    w.Add BEG_PV_ENUM, 1
-
-    w.Add BEG_IF, 1
-    w.Add END_IF, -1
-    'because any following 'Case' indents to the left we jump two
-    w.Add BEG_SELECT, 2
-    w.Add END_SELECT, -2
-    w.Add BEG_WITH, 1
-    w.Add END_WITH, -1
-
-    w.Add BEG_FOR, 1
-    w.Add END_FOR, -1
-    w.Add BEG_DOWHILE, 1
-    w.Add BEG_DOUNTIL, 1
-    w.Add BEG_WHILE, 1
-    w.Add END_WHILE, -1
-
-    w.Add BEG_TYPE, 1
-    w.Add END_TYPE, -1
-    w.Add BEG_PB_TYPE, 1
-    w.Add BEG_PV_TYPE, 1
-
+    
+    With w
+        .Add PRECOMP_BEG_IF, 1
+        .Add PRECOMP_END_IF, -1
+        
+        .Add BEG_SUB, 1
+        .Add END_SUB, -1
+        .Add BEG_PB_SUB, 1
+        .Add BEG_PV_SUB, 1
+        .Add BEG_FR_SUB, 1
+        .Add BEG_PB_ST_SUB, 1
+        .Add BEG_PV_ST_SUB, 1
+        .Add BEG_FR_ST_SUB, 1
+        
+        .Add BEG_FUN, 1
+        .Add END_FUN, -1
+        .Add BEG_PB_FUN, 1
+        .Add BEG_PV_FUN, 1
+        .Add BEG_FR_FUN, 1
+        .Add BEG_PB_ST_FUN, 1
+        .Add BEG_PV_ST_FUN, 1
+        .Add BEG_FR_ST_FUN, 1
+        
+        .Add BEG_PROP, 1
+        .Add END_PROP, -1
+        .Add BEG_PB_PROP, 1
+        .Add BEG_PV_PROP, 1
+        .Add BEG_FR_PROP, 1
+        .Add BEG_PB_ST_PROP, 1
+        .Add BEG_PV_ST_PROP, 1
+        .Add BEG_FR_ST_PROP, 1
+        
+        .Add BEG_ENUM, 1
+        .Add END_ENUM, -1
+        .Add BEG_PB_ENUM, 1
+        .Add BEG_PV_ENUM, 1
+        
+        .Add BEG_IF, 1
+        .Add END_IF, -1
+        'because any following 'Case' indents to the left we jump two
+        .Add BEG_SELECT, 2
+        .Add END_SELECT, -2
+        .Add BEG_WITH, 1
+        .Add END_WITH, -1
+        
+        .Add BEG_FOR, 1
+        .Add END_FOR, -1
+        .Add BEG_DO, 1
+        .Add END_DO, -1
+        .Add BEG_WHILE, 1
+        .Add END_WHILE, -1
+        
+        .Add BEG_TYPE, 1
+        .Add END_TYPE, -1
+        .Add BEG_PB_TYPE, 1
+        .Add BEG_PV_TYPE, 1
+        
+    End With
+    
     Set words = w
 End Sub
 
