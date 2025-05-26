@@ -206,6 +206,9 @@ Public Sub formatCode(codePane As codeModule)
     Dim isBeforePrevLineContinuated As Boolean
     isBeforePrevLineContinuated = False
     
+    Dim indentLevel As Integer
+    indentLevel = 0
+    
     Dim lineNr As Integer
     For lineNr = 1 To lineCount
         Dim line As String
