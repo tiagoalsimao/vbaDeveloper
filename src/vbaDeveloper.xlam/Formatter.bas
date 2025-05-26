@@ -158,6 +158,31 @@ Private Property Get vbaWords() As Dictionary
     Set vbaWords = words
 End Property
 
+Private Function GetMiddleWords() As Dictionary
+    Static MiddleWords As Dictionary
+    
+    If MiddleWords Is Nothing Then
+        Set MiddleWords = CreateMiddleWords()
+    End If
+    
+    Set GetMiddleWords = MiddleWords
+End Function
+
+Private Function IsMiddleWord(Line As String) As Boolean
+    
+    Dim MiddleWords As Dictionary
+    Set MiddleWords = GetMiddleWords()
+    
+    Dim MiddleWord As Variant
+    For Each MiddleWord In MiddleWords.Keys
+        If lineStartsWith(MiddleWord, Line) Then
+            IsMiddleWord = True
+            Exit Function
+        End If
+    Next
+    
+End Function
+
 Public Sub testFormatting()
     If words Is Nothing Then
         initialize
