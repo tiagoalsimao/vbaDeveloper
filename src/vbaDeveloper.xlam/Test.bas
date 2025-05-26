@@ -35,7 +35,7 @@ End Sub
 Public Sub testImport()
     Dim proj_name As String
     proj_name = "vbaDeveloper"
-
+    
     Dim vbaProject As Object
     Set vbaProject = Application.VBE.VBProjects(proj_name)
     Build.importVbaCode vbaProject
@@ -45,7 +45,7 @@ End Sub
 Public Sub testExport()
     Dim proj_name As String
     proj_name = "vbaDeveloper"
-
+    
     Dim vbaProject As Object
     Set vbaProject = Application.VBE.VBProjects(proj_name)
     menu.exportVbProject vbaProject.fileName
@@ -164,8 +164,8 @@ Function withoutAccessModifier()
     Dim finished As Boolean
     finished = False
     'this is also not:
-'alabel:
-'andthis:
+    'alabel:
+    'andthis:
     Do While Not finished
         y = y + 1
         If y = 10 Then
@@ -175,12 +175,12 @@ Function withoutAccessModifier()
 End Function
 
 Sub aSubWithoutAccessModifier(that As Variant, _
-    has As String, _
-    A As Integer, _
-    lot As Integer, _
-    of As Variant, Optional _
-    parameters As String = "default")
-
+            has As String, _
+            A As Integer, _
+            lot As Integer, _
+            of As Variant, Optional _
+            parameters As String = "default")
+    
     Dim p As Object
 somelabel:
     'the next line
@@ -189,7 +189,7 @@ somelabel:
         .codeIsNotSupposedToReachHere
     End With
 anotherLabel:
-
+    
 End Sub
 
 Sub testIsLabel()

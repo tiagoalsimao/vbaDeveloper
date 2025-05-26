@@ -15,9 +15,9 @@ Private customAction As CustomActions
 Private Sub Workbook_Open()
     Debug.Print "vbaDeveloper thisWorkbook_open()"
     Set listener = New EventListener
-    Set customAction = New MyCustomActions
+    'Set customAction = New MyCustomActions
     menu.createMenu
-    customAction.afterOpen
+    'customAction.afterOpen
 End Sub
 
 
