@@ -219,10 +219,7 @@ Public Sub formatCode(codePane As codeModule)
         
         If line = "" Then
             levelChange = 0
-        ElseIf isEqual(ONEWORD_ELSE, LineWithoutComments) _
-                    Or lineStartsWith(BEG_END_ELSEIF, LineWithoutComments) _
-                    Or lineStartsWith(BEG_END_CASE, LineWithoutComments) Then
-                    
+        ElseIf IsMiddleWord(LineWithoutComments) Then
             ' Case, Else, ElseIf need to jump to the left
             levelChange = 1
             indentLevel = -1 + indentLevel
@@ -281,22 +278,11 @@ End Sub
 Private Function indentChange(ByVal line As String) As Integer
     indentChange = 0
     Dim w As Dictionary
-    Set w = vbaWords
-
-    If isEqual(line, ONEWORD_END_FOR) Or _
-        lineStartsWith(ONEWORD_END_LOOP, line) Then
-        indentChange = -1
-        GoTo hell
-    End If
-    If isEqual(ONEWORD_DO, line) Then
-        indentChange = 1
-        GoTo hell
-    End If
-    Dim word As String
-    Dim vord As Variant
-    For Each vord In w.Keys
-        word = vord 'Cast the Variant to a String
-        If lineStartsWith(word, line) Then
+    Set w = vbaWords()
+    
+    Dim word As Variant
+    For Each word In w.Keys
+        If lineStartsWith(word, Line) Then
             indentChange = vbaWords(word)
             GoTo hell
         End If
