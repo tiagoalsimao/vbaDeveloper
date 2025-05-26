@@ -66,9 +66,10 @@ Private Const BEG_END_CASE As String = "Case"
 Private Const THEN_KEYWORD As String = "Then"
 Private Const LINE_CONTINUATION As String = " _"
 
-Private Const INDENT = "    "
+Private Const INDENT As String = "    "
 
-Private words As Dictionary 'Keys are Strings, Value is an Integer indicating change in indentation
+Private words As Dictionary ' Keys are Strings, Value is an Integer indicating change in indentation
+
 Private indentation(0 To 20) As Variant ' Prevent repeatedly building the same strings by looking them up in here
 
 ' 3-state data type for checking if part of code is within a string or not
@@ -213,7 +214,7 @@ Public Sub testFormatting()
     End If
     'Debug.Print Application.VBE.ActiveCodePane.codePane.Parent.Name
     'Debug.Print Application.VBE.ActiveWindow.caption
-
+    
     Dim projName As String, moduleName As String
     projName = "vbaDeveloper"
     moduleName = "Test"
@@ -221,7 +222,7 @@ Public Sub testFormatting()
     Set vbaProject = Application.VBE.VBProjects(projName)
     Dim code As codeModule
     Set code = vbaProject.VBComponents(moduleName).codeModule
-
+    
     'removeIndentation code
     'formatCode code
     formatProject vbaProject
@@ -229,7 +230,7 @@ End Sub
 
 Public Sub formatProject(vbaProject As VBProject)
     Dim codePane As codeModule
-
+    
     Dim component As Variant
     For Each component In vbaProject.VBComponents
         Set codePane = component.codeModule
@@ -244,41 +245,44 @@ End Sub
 
 
 Public Sub formatCode(codePane As codeModule)
-    On Error GoTo formatCodeError
+    'On Error GoTo formatCodeError
     Dim lineCount As Integer
     lineCount = codePane.CountOfLines
-
-    Dim indentLevel As Integer, nextLevel As Integer, levelChange As Integer, isPrevLineContinuated As Boolean
-    indentLevel = 0
+    
+    Dim isPrevLineContinuated As Boolean
     isPrevLineContinuated = False
     
     Dim isBeforePrevLineContinuated As Boolean
     isBeforePrevLineContinuated = False
     
-    Dim indentLevel As Integer
-    indentLevel = 0
+    Dim IndentLevel As Integer
+    IndentLevel = 0
     
     Dim lineNr As Integer
     For lineNr = 1 To lineCount
-        Dim line As String
-        line = Trim(codePane.lines(lineNr, 1))
         
-        Dim IsCurrentLineContinuated As Boolean
-        IsCurrentLineContinuated = IsLineContinuated(line)
+        Dim Line As String
+        Line = Trim(codePane.lines(lineNr, 1))
         
         Dim LineWithoutComments As String
-        LineWithoutComments = TrimComments(line)
+        LineWithoutComments = TrimComments(Line)
         
-        If line = "" Then
+        Dim IsCurrentLineContinuated As Boolean
+        IsCurrentLineContinuated = IsLineContinuated(LineWithoutComments)
+        
+        Dim levelChange As Integer
+        levelChange = 0
+        
+        If Line = "" Then
             levelChange = 0
         ElseIf IsMiddleWord(LineWithoutComments) Then
-            ' Case, Else, ElseIf need to jump to the left
+            ' Case, Else, ElseIf need to jump to the left, and Next Indent
             levelChange = 1
-            indentLevel = -1 + indentLevel
+            IndentLevel = IndentLevel - 1
         ElseIf isLabel(LineWithoutComments) Then
             ' Labels don't have indentation
-            levelChange = indentLevel
-            indentLevel = 0
+            levelChange = IndentLevel
+            IndentLevel = 0
             ' check for oneline If statemts
         ElseIf isOneLineIfStatemt(LineWithoutComments) Then
             levelChange = 0
@@ -286,49 +290,56 @@ Public Sub formatCode(codePane As codeModule)
             levelChange = indentChange(LineWithoutComments)
         End If
         
+        ' Update Indentation for current line
+        Dim CurrentIndentLevel As Integer
+        If levelChange < 0 Then
+            CurrentIndentLevel = IndentLevel + levelChange
+        Else
+            CurrentIndentLevel = IndentLevel
+        End If
+        
+        ' Update Code Line
+        Line = indentation(CurrentIndentLevel) + Line
+        codePane.ReplaceLine lineNr, Line
+        
+        ' Treate Indentantion for LineContinuation (lines ending with  " _")
         If IsCurrentLineContinuated And Not isPrevLineContinuated Then
             levelChange = levelChange + 2
-        ElseIf isBeforePrevLineContinuated And Not isPrevLineContinuated And Not IsCurrentLineContinuated Then
+        ElseIf isPrevLineContinuated And Not IsCurrentLineContinuated Then
             levelChange = levelChange - 2
         End If
         
-        nextLevel = indentLevel + levelChange
-        If levelChange <= -1 Then
-            indentLevel = nextLevel
-        End If
-
-        line = indentation(indentLevel) + line
-        indentLevel = nextLevel
-        
-        codePane.ReplaceLine lineNr, line
-        
+        ' Update  Variables for next iteration
+        IndentLevel = IndentLevel + levelChange
         isBeforePrevLineContinuated = isPrevLineContinuated
         isPrevLineContinuated = IsCurrentLineContinuated
     Next
+    
     Exit Sub
 formatCodeError:
     Debug.Print "Error while formatting " & codePane.Parent.name
     Debug.Print Err.Number & " " & Err.Description
-    Debug.Print " on line " & lineNr & ": " & line
-    Debug.Print "indentLevel: " & indentLevel & " , levelChange: " & levelChange
+    Debug.Print " on line " & lineNr & ": " & Line
+    Debug.Print "IndentLevel: " & IndentLevel & " , levelChange: " & levelChange
 End Sub
 
 
 Public Sub removeIndentation(codePane As codeModule)
     Dim lineCount As Integer
     lineCount = codePane.CountOfLines
-
+    
     Dim lineNr As Integer
     For lineNr = 1 To lineCount
-        Dim line As String
-        line = codePane.lines(lineNr, 1)
-        line = Trim(line)
-        Call codePane.ReplaceLine(lineNr, line)
+        Dim Line As String
+        Line = codePane.lines(lineNr, 1)
+        Line = Trim(Line)
+        Call codePane.ReplaceLine(lineNr, Line)
     Next
 End Sub
 
-Private Function indentChange(ByVal line As String) As Integer
+Private Function indentChange(ByVal Line As String) As Integer
     indentChange = 0
+    
     Dim w As Dictionary
     Set w = vbaWords()
     
@@ -379,36 +390,34 @@ Private Function lineEndsWith(ending As String, strToCheck As String) As Boolean
 End Function
 
 
-Private Function isLabel(line As String) As Boolean
+Private Function isLabel(Line As String) As Boolean
     'it must end with a colon: and may not contain a space.
-    isLabel = (Right(line, 1) = ":") And (InStr(line, " ") < 1)
+    isLabel = (Right(Line, 1) = ":") And (InStr(Line, " ") < 1)
 End Function
 
 
-Private Function isOneLineIfStatemt(line As String) As Boolean
+Private Function isOneLineIfStatemt(Line As String) As Boolean
     Dim trimmedLine As String
-    trimmedLine = TrimComments(line)
+    trimmedLine = TrimComments(Line)
     isOneLineIfStatemt = (lineStartsWith(BEG_IF, trimmedLine) And (Not lineEndsWith(THEN_KEYWORD, trimmedLine)))
 End Function
 
 
-Private Function IsLineContinuated(line As String) As Boolean
-    Dim trimmedLine As String
-    trimmedLine = TrimComments(line)
-    IsLineContinuated = lineEndsWith(LINE_CONTINUATION, trimmedLine)
+Private Function IsLineContinuated(Line As String) As Boolean
+    IsLineContinuated = lineEndsWith(LINE_CONTINUATION, Line)
 End Function
 
 
 ' Trims trailing comments (and whitespace before a comment) from a line of code
-Private Function TrimComments(ByVal line As String) As String
+Private Function TrimComments(ByVal Line As String) As String
     Dim c               As Long
     Dim inQuotes        As StringStatus
     Dim inComment       As Boolean
-
+    
     inQuotes = NotInString
     inComment = False
-    For c = 1 To Len(line)
-        If Mid(line, c, 1) = Chr(34) Then
+    For c = 1 To Len(Line)
+        If Mid(Line, c, 1) = Chr(34) Then
             ' Found a double quote
             Select Case inQuotes
                 Case NotInString:
@@ -425,14 +434,14 @@ Private Function TrimComments(ByVal line As String) As String
             End If
         End If
         ' Now know as much about status inside double quotes as possible, can test for comment
-        If inQuotes = NotInString And Mid(line, c, 1) = "'" Then
+        If inQuotes = NotInString And Mid(Line, c, 1) = "'" Then
             inComment = True
             Exit For
         End If
     Next c
     If inComment Then
-        TrimComments = Trim(Left(line, c - 1))
+        TrimComments = Trim(Left(Line, c - 1))
     Else
-        TrimComments = line
+        TrimComments = Line
     End If
 End Function
