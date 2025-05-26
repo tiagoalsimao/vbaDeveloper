@@ -202,40 +202,58 @@ Public Sub formatCode(codePane As codeModule)
     Dim indentLevel As Integer, nextLevel As Integer, levelChange As Integer, isPrevLineContinuated As Boolean
     indentLevel = 0
     isPrevLineContinuated = False
+    
+    Dim isBeforePrevLineContinuated As Boolean
+    isBeforePrevLineContinuated = False
+    
     Dim lineNr As Integer
     For lineNr = 1 To lineCount
         Dim line As String
         line = Trim(codePane.lines(lineNr, 1))
-        If Not line = "" Then
-            If isEqual(ONEWORD_ELSE, line) _
-                Or lineStartsWith(BEG_END_ELSEIF, line) _
-                Or lineStartsWith(BEG_END_CASE, line) Then
-                ' Case, Else, ElseIf need to jump to the left
-                levelChange = 1
-                indentLevel = -1 + indentLevel
-            ElseIf isLabel(line) Then
-                ' Labels don't have indentation
-                levelChange = indentLevel
-                indentLevel = 0
-                ' check for oneline If statemts
-            ElseIf isOneLineIfStatemt(line) Then
-                levelChange = 0
-            Else
-                levelChange = indentChange(line)
-            End If
-
-            nextLevel = indentLevel + levelChange
-            If levelChange <= -1 Then
-                indentLevel = nextLevel
-            End If
-
-            line = indentation(indentLevel) + line
+        
+        Dim LineWithoutComments As String
+        LineWithoutComments = TrimComments(line)
+        
+        Dim IsCurrentLineContinuated As Boolean
+        IsCurrentLineContinuated = IsLineContinuated(line)
+        
+        If line = "" Then
+            levelChange = 0
+        ElseIf isEqual(ONEWORD_ELSE, line) _
+            Or lineStartsWith(BEG_END_ELSEIF, line) _
+            Or lineStartsWith(BEG_END_CASE, line) Then
+            ' Case, Else, ElseIf need to jump to the left
+            levelChange = 1
+            indentLevel = -1 + indentLevel
+        ElseIf isLabel(line) Then
+            ' Labels don't have indentation
+            levelChange = indentLevel
+            indentLevel = 0
+            ' check for oneline If statemts
+        ElseIf isOneLineIfStatemt(line) Then
+            levelChange = 0
+        Else
+            levelChange = indentChange(line)
+        End If
+        
+        If IsCurrentLineContinuated And Not isPrevLineContinuated Then
+            levelChange = levelChange + 2
+        ElseIf isBeforePrevLineContinuated And Not isPrevLineContinuated And Not IsCurrentLineContinuated Then
+            levelChange = levelChange - 2
+        End If
+        
+        nextLevel = indentLevel + levelChange
+        If levelChange <= -1 Then
             indentLevel = nextLevel
         End If
-        If Not isPrevLineContinuated Then
-            Call codePane.ReplaceLine(lineNr, line)
-        End If
-        isPrevLineContinuated = isLineContinuated(line)
+
+        line = indentation(indentLevel) + line
+        indentLevel = nextLevel
+        
+        codePane.ReplaceLine lineNr, line
+        
+        isBeforePrevLineContinuated = isPrevLineContinuated
+        isPrevLineContinuated = IsCurrentLineContinuated
     Next
     Exit Sub
 formatCodeError:
@@ -321,14 +339,14 @@ End Function
 Private Function isOneLineIfStatemt(line As String) As Boolean
     Dim trimmedLine As String
     trimmedLine = TrimComments(line)
-    isOneLineIfStatemt = (lineStartsWith(BEG_IF, trimmedLine) And (Not lineEndsWith(THEN_KEYWORD, trimmedLine)) And Not lineEndsWith(LINE_CONTINUATION, trimmedLine))
+    isOneLineIfStatemt = (lineStartsWith(BEG_IF, trimmedLine) And (Not lineEndsWith(THEN_KEYWORD, trimmedLine)))
 End Function
 
 
-Private Function isLineContinuated(line As String) As Boolean
+Private Function IsLineContinuated(line As String) As Boolean
     Dim trimmedLine As String
     trimmedLine = TrimComments(line)
-    isLineContinuated = lineEndsWith(LINE_CONTINUATION, trimmedLine)
+    IsLineContinuated = lineEndsWith(LINE_CONTINUATION, trimmedLine)
 End Function
 
 
