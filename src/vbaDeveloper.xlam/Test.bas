@@ -192,7 +192,7 @@ anotherLabel:
     
 End Sub
 
-Sub testIsLabel()
+Sub TestIsLabel()
     Dim line1 As String, line2 As String
     line1 = "'somelabel:"
     line2 = "some label:"
