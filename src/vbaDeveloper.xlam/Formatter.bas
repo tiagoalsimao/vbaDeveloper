@@ -1,5 +1,12 @@
 Attribute VB_Name = "Formatter"
+Option Private Module
 Option Explicit
+
+Private Const INDENT_ON_ERROR As Boolean = True
+Private Const INDENT_PRECOMPILATION_SHARP As Boolean = True
+
+Private Const END_ON_ERROR As String = "On Error GoTo 0"
+Private Const BEG_ON_ERROR As String = "On Error"
 
 Private Const PRECOMP_BEG_IF As String = "#If"
 Private Const PRECOMP_BEG_END_ELSE As String = "#Else"
@@ -99,8 +106,10 @@ Private Sub initializeWords()
     Set w = New Dictionary
     
     With w
-        .Add PRECOMP_BEG_IF, 1
-        .Add PRECOMP_END_IF, -1
+        If INDENT_PRECOMPILATION_SHARP Then
+            .Add PRECOMP_BEG_IF, 1
+            .Add PRECOMP_END_IF, -1
+        End If
         
         .Add BEG_SUB, 1
         .Add END_SUB, -1
@@ -154,6 +163,12 @@ Private Sub initializeWords()
         .Add BEG_PB_TYPE, 1
         .Add BEG_PV_TYPE, 1
         
+        If INDENT_ON_ERROR Then
+            ' Keep Order
+            .Add END_ON_ERROR, -1
+            .Add BEG_ON_ERROR, 1
+        End If
+        
     End With
     
     Set words = w
@@ -165,8 +180,11 @@ Private Function CreateMiddleWords() As Dictionary
     Set MiddleWords = New Dictionary
     
     With MiddleWords
-        .Add PRECOMP_BEG_END_ELSE, Empty
-        .Add PRECOMP_BEG_END_ELSEIF, Empty
+        
+        If INDENT_PRECOMPILATION_SHARP Then
+            .Add PRECOMP_BEG_END_ELSE, Empty
+            .Add PRECOMP_BEG_END_ELSEIF, Empty
+        End If
         
         .Add BEG_END_ELSE, Empty
         .Add BEG_END_ELSEIF, Empty
@@ -208,6 +226,37 @@ Private Function IsMiddleWord(Line As String) As Boolean
     
 End Function
 
+Private Function IsKeyWord(Line As String) As Boolean
+    Static KeyWords As Dictionary
+    If KeyWords Is Nothing Then
+        Set KeyWords = GetKeyWords()
+    End If
+    
+    Dim KeyWord As Variant
+    For Each KeyWord In KeyWords.Keys
+        If lineStartsWith(KeyWord, Line) Then
+            IsKeyWord = True
+            Exit Function
+        End If
+    Next
+End Function
+
+Private Function GetKeyWords() As Dictionary
+    Dim KeyWords As Dictionary
+    Set KeyWords = New Dictionary
+    
+    Dim Key As Variant
+    For Each Key In GetMiddleWords().Keys
+        KeyWords.Add Key, Empty
+    Next
+    
+    For Each Key In vbaWords().Keys
+        KeyWords.Add Key, Empty
+    Next
+    
+    Set GetKeyWords = KeyWords
+End Function
+
 Public Sub testFormatting()
     If words Is Nothing Then
         initialize
@@ -229,12 +278,20 @@ Public Sub testFormatting()
 End Sub
 
 Public Sub formatProject(vbaProject As VBProject)
-    Dim codePane As codeModule
+    
+    Dim vbProjectFileName As String
+    On Error Resume Next
+        'this can throw if the workbook has never been saved.
+        vbProjectFileName = vbaProject.fileName
+    On Error GoTo 0
+    
+    Debug.Print "Formatting VBA project " & vbaProject.name, vbProjectFileName
     
     Dim component As Variant
     For Each component In vbaProject.VBComponents
+        Dim codePane As codeModule
         Set codePane = component.codeModule
-        Debug.Print "Formatting " & component.name
+        'Debug.Print "Formatting " & component.Name
         formatCode codePane
     Next
 End Sub
@@ -252,11 +309,11 @@ Public Sub formatCode(codePane As codeModule)
     Dim isPrevLineContinuated As Boolean
     isPrevLineContinuated = False
     
-    Dim isBeforePrevLineContinuated As Boolean
-    isBeforePrevLineContinuated = False
-    
     Dim IndentLevel As Integer
     IndentLevel = 0
+    
+    Dim FormatIncorrecLines As String
+    FormatIncorrecLines = ""
     
     Dim lineNr As Integer
     For lineNr = 1 To lineCount
@@ -273,19 +330,25 @@ Public Sub formatCode(codePane As codeModule)
         Dim levelChange As Integer
         levelChange = 0
         
-        If Line = "" Then
+        If LineWithoutComments = "" Then
             levelChange = 0
         ElseIf IsMiddleWord(LineWithoutComments) Then
             ' Case, Else, ElseIf need to jump to the left, and Next Indent
             levelChange = 1
             IndentLevel = IndentLevel - 1
+        ElseIf isPrevLineContinuated And IsNamedArgument(LineWithoutComments) Then
+            levelChange = 0
         ElseIf isLabel(LineWithoutComments) Then
             ' Labels don't have indentation
             levelChange = IndentLevel
             IndentLevel = 0
-            ' check for oneline If statemts
+        ElseIf endsWithThen(LineWithoutComments) Then
+            levelChange = 1
         ElseIf isOneLineIfStatemt(LineWithoutComments) Then
+            ' check for one line If statemts
             levelChange = 0
+        ElseIf isSingleNextToMultipleFor(LineWithoutComments) Then
+            levelChange = -CountForNextClosures(LineWithoutComments)
         Else
             levelChange = indentChange(LineWithoutComments)
         End If
@@ -296,6 +359,14 @@ Public Sub formatCode(codePane As codeModule)
             CurrentIndentLevel = IndentLevel + levelChange
         Else
             CurrentIndentLevel = IndentLevel
+        End If
+        
+        If CurrentIndentLevel < 0 Then
+            ' Reset CurrentIndentLevel and LevelChange
+            CurrentIndentLevel = 0
+            If levelChange < 0 Then levelChange = 0
+            
+            FormatIncorrecLines = FormatIncorrecLines & ", " & lineNr
         End If
         
         ' Update Code Line
@@ -311,9 +382,15 @@ Public Sub formatCode(codePane As codeModule)
         
         ' Update  Variables for next iteration
         IndentLevel = IndentLevel + levelChange
-        isBeforePrevLineContinuated = isPrevLineContinuated
         isPrevLineContinuated = IsCurrentLineContinuated
     Next
+    
+    If FormatIncorrecLines <> "" Then
+        Debug.Print "Format not correct in module: " & codePane & _
+                "; Lines: " & FormatIncorrecLines
+    ElseIf IndentLevel <> 0 Then
+        Debug.Print "Format not correct in the end of module: " & codePane
+    End If
     
     Exit Sub
 formatCodeError:
@@ -322,7 +399,6 @@ formatCodeError:
     Debug.Print " on line " & lineNr & ": " & Line
     Debug.Print "IndentLevel: " & IndentLevel & " , levelChange: " & levelChange
 End Sub
-
 
 Public Sub removeIndentation(codePane As codeModule)
     Dim lineCount As Integer
@@ -361,6 +437,8 @@ End Function
 ' Returns True if strToCheck begins with begin, ignoring case
 Private Function lineStartsWith(ByVal begin As String, ByVal strToCheck As String) As Boolean
     
+    strToCheck = GetLeftToColon(strToCheck)
+    
     ' Add Space on the right to check exact word.
     ' This avoids cases where variable or procedure start with Keywords, E.g. NextLevel
     AddSpaceOnTheRight begin
@@ -369,9 +447,24 @@ Private Function lineStartsWith(ByVal begin As String, ByVal strToCheck As Strin
     lineStartsWith = False
     Dim beginLength As Integer
     beginLength = Len(begin)
+    
     If Len(strToCheck) >= beginLength Then
-        lineStartsWith = isEqual(begin, Left(strToCheck, beginLength))
+        Dim StringToCompare As String
+        StringToCompare = Left(strToCheck, beginLength)
+        lineStartsWith = isEqual(begin, StringToCompare)
     End If
+End Function
+
+Private Function GetLeftToColon(Line As String) As String
+    
+    If Line = "" Then Exit Function
+    
+    Dim ColonArray As Variant
+    ColonArray = Split(Line, ":")
+    
+    Dim FirstWordLeftToColon As String
+    GetLeftToColon = ColonArray(0)
+    
 End Function
 
 Private Sub AddSpaceOnTheRight(ByRef Text As String)
@@ -380,26 +473,83 @@ Private Sub AddSpaceOnTheRight(ByRef Text As String)
     End If
 End Sub
 ' Returns True if strToCheck ends with ending, ignoring case
-Private Function lineEndsWith(ending As String, strToCheck As String) As Boolean
+Private Function lineEndsWith(ByVal ending As String, ByVal strToCheck As String) As Boolean
+    
+    ' Add Space on the right to check exact word.
+    ' This avoids cases where variable or procedure start with Keywords, E.g. DoSomethingThen
+    AddSpaceOnTheLeft ending
+    AddSpaceOnTheLeft strToCheck
+    
     lineEndsWith = False
-    Dim length As Integer
-    length = Len(ending)
-    If Len(strToCheck) >= length Then
-        lineEndsWith = isEqual(ending, Right(strToCheck, length))
+    Dim Length As Integer
+    Length = Len(ending)
+    If Len(strToCheck) >= Length Then
+        Dim StringToCompare As String
+        StringToCompare = Right(strToCheck, Length)
+        lineEndsWith = isEqual(ending, StringToCompare)
     End If
 End Function
 
+Private Sub AddSpaceOnTheLeft(ByRef Text As String)
+    If Left(Text, 1) <> " " Then
+        Text = " " & Text
+    End If
+End Sub
 
-Private Function isLabel(Line As String) As Boolean
-    'it must end with a colon: and may not contain a space.
-    isLabel = (Right(Line, 1) = ":") And (InStr(Line, " ") < 1)
+Private Function isSingleNextToMultipleFor(Line As String) As Boolean
+    isSingleNextToMultipleFor = lineStartsWith(END_FOR, Line) And CountForNextClosures(Line) > 0
 End Function
 
+' Count how many For are closed by a single next, e.g. Next i,j,k
+Private Function CountForNextClosures(Line As String) As Integer
+    CountForNextClosures = UBound(Split(Line, ",")) + 1
+End Function
+
+Private Sub TestIsLabel()
+    Debug.Print isLabel("AnyWord:")
+    Debug.Print isLabel("AnyWord: ' Comment")
+    
+    Debug.Print Not isLabel("On Error GoTo nochange:")
+    Debug.Print Not isLabel("Next:")
+    Debug.Print Not isLabel("Next")
+    Debug.Print Not isLabel("AnyWord")
+    Debug.Print Not isLabel("AnyWord ' Comment")
+    
+    Debug.Print Not isLabel("Next: ' Comment")
+    Debug.Print Not isLabel("""Anyword: ' Comment")
+End Sub
+
+Private Function isLabel(Line As String) As Boolean
+    
+    Dim ColonArray As Variant
+    ColonArray = Split(Line, ":")
+    
+    If UBound(ColonArray) = 0 Then
+        isLabel = False
+        Exit Function
+    End If
+    
+    Dim FirstWordLeftToColon As String
+    FirstWordLeftToColon = ColonArray(0)
+    
+    'it must end with a colon: and may not contain a space.
+    isLabel = Not IsKeyWord(FirstWordLeftToColon) And (InStr(FirstWordLeftToColon, " ") < 1) And (InStr(FirstWordLeftToColon, """") < 1)
+    
+End Function
+
+Private Function IsNamedArgument(Line As String) As Boolean
+    IsNamedArgument = InStr(Line, ":=") > 0
+End Function
+
+Private Function endsWithThen(Line As String) As Boolean
+    endsWithThen = lineEndsWith(THEN_KEYWORD, Line)
+End Function
 
 Private Function isOneLineIfStatemt(Line As String) As Boolean
-    Dim trimmedLine As String
-    trimmedLine = TrimComments(Line)
-    isOneLineIfStatemt = (lineStartsWith(BEG_IF, trimmedLine) And (Not lineEndsWith(THEN_KEYWORD, trimmedLine)))
+    ' If * then in same line
+    ' If * then * Else in same line
+    isOneLineIfStatemt = (lineStartsWith(BEG_IF, Line) _
+            And (Not lineEndsWith(THEN_KEYWORD, Line)))
 End Function
 
 
@@ -445,3 +595,4 @@ Private Function TrimComments(ByVal Line As String) As String
         TrimComments = Line
     End If
 End Function
+
